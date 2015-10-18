@@ -1,5 +1,5 @@
 #!/bin/bash -ex
-
+apt-get update && apt-get install -y curl
 trim() {
     echo "$*" | tr -d '\r\n ' 
 }
@@ -17,11 +17,20 @@ sed -i "s/MYSQL_PASSWORD/`trim ${MYSQL_PASSWORD}`/" /tomcat/conf/Catalina/localh
 rm -rf /tomcat/webapps/ROOT
 
 case $WAR_URL in
-  http*) 
+  http*)
+    until $(curl --output /dev/null --silent --head --fail $WAR_URL); do
+        printf '.'
+        sleep 5
+    done 
     wget -v `trim ${WAR_URL}` -O /tomcat/webapps/ROOT.war
     ;;
   file*)
-    cp -v `echo $WAR_URL | sed -E 's|^file://||'` /tomcat/webapps/ROOT.war
+    WAR_PATH=$(echo $WAR_URL | sed -E 's|^file://||')
+    while [ ! -f $WAR_PATH ] ;
+    do
+       sleep 5
+    done
+    cp -rfv $WAR_PATH /tomcat/webapps/ROOT.war 
     ;;
 esac
 
